@@ -1,0 +1,206 @@
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 10 10% 4%;
+    --foreground: 120 100% 50%;
+    --card: 10 10% 6%;
+    --card-foreground: 120 100% 50%;
+    --popover: 10 10% 6%;
+    --popover-foreground: 120 100% 50%;
+    --primary: 120 100% 25%;
+    --primary-foreground: 10 10% 4%;
+    --secondary: 10 5% 15%;
+    --secondary-foreground: 120 100% 50%;
+    --muted: 10 5% 15%;
+    --muted-foreground: 120 50% 70%;
+    --accent: 15 100% 55%;
+    --accent-foreground: 10 10% 4%;
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 10 5% 20%;
+    --input: 10 5% 15%;
+    --ring: 120 100% 50%;
+    --radius: 0.5rem;
+    --terminal-bg: 10 10% 4%;
+    --terminal-green: 120 100% 50%;
+    --terminal-orange: 15 100% 55%;
+    --terminal-gray: 120 20% 60%;
+  }
+
+  .dark {
+    --background: 10 10% 4%;
+    --foreground: 120 100% 50%;
+    --card: 10 10% 6%;
+    --card-foreground: 120 100% 50%;
+    --popover: 10 10% 6%;
+    --popover-foreground: 120 100% 50%;
+    --primary: 120 100% 25%;
+    --primary-foreground: 10 10% 4%;
+    --secondary: 10 5% 15%;
+    --secondary-foreground: 120 100% 50%;
+    --muted: 10 5% 15%;
+    --muted-foreground: 120 50% 70%;
+    --accent: 15 100% 55%;
+    --accent-foreground: 10 10% 4%;
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 10 5% 20%;
+    --input: 10 5% 15%;
+    --ring: 120 100% 50%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  
+  body {
+    @apply bg-background text-foreground font-mono;
+
+    font-family: 'JetBrains Mono', 'Courier New', monospace;
+    background: hsl(var(--terminal-bg));
+    color: hsl(var(--terminal-green));
+  }
+  
+  .terminal-text {
+    font-family: 'JetBrains Mono', 'Courier New', monospace;
+    color: hsl(var(--terminal-green));
+  }
+  
+  .terminal-orange {
+    color: hsl(var(--terminal-orange));
+  }
+  
+  .terminal-gray {
+    color: hsl(var(--terminal-gray));
+  }
+}
+
+@layer components {
+  .terminal-window {
+    background: hsl(var(--terminal-bg));
+    border: 1px solid hsl(var(--border));
+    border-radius: 8px;
+    box-shadow: 0 4px 20px rgb(0 255 65 / 10%);
+  }
+  
+  .terminal-header {
+    background: linear-gradient(90deg, hsl(var(--terminal-bg)) 0%, rgb(0 255 65 / 5%) 100%);
+    border-bottom: 1px solid hsl(var(--border));
+    padding: 12px 16px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  
+  .terminal-dot {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+  }
+  
+  .terminal-dot.red {
+    background: #ff5f56;
+  }
+  
+  .terminal-dot.yellow {
+    background: #ffbd2e;
+  }
+  
+  .terminal-dot.green {
+    background: #27ca3f;
+  }
+  
+  .terminal-content {
+    padding: 16px;
+    min-height: 400px;
+    max-height: 600px;
+    overflow-y: auto;
+  }
+  
+  .terminal-line {
+    display: flex;
+    align-items: flex-start;
+    margin-bottom: 4px;
+    line-height: 1.5;
+  }
+  
+  .terminal-prompt {
+    color: hsl(var(--terminal-green));
+    margin-right: 8px;
+    flex-shrink: 0;
+  }
+  
+  .terminal-input {
+    background: transparent;
+    border: none;
+    outline: none;
+    color: hsl(var(--terminal-green));
+    font-family: 'JetBrains Mono', 'Courier New', monospace;
+    flex: 1;
+    caret-color: hsl(var(--terminal-green));
+  }
+  
+  .terminal-cursor {
+    animation: blink 1s infinite;
+    background: hsl(var(--terminal-green));
+    width: 8px;
+    height: 20px;
+    display: inline-block;
+  }
+  
+  @keyframes blink {
+    0%, 50% { opacity: 100%; }
+    51%, 100% { opacity: 0%; }
+  }
+  
+  .ai-panel {
+    background: linear-gradient(135deg, rgb(0 255 65 / 5%) 0%, rgb(255 107 53 / 5%) 100%);
+    border: 1px solid hsl(var(--border));
+    border-radius: 8px;
+    backdrop-filter: blur(10px);
+  }
+  
+  .command-suggestion {
+    background: rgb(0 255 65 / 10%);
+    border: 1px solid rgb(0 255 65 / 20%);
+    border-radius: 4px;
+    padding: 8px 12px;
+    margin: 4px 0;
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+  
+  .command-suggestion:hover {
+    background: rgb(0 255 65 / 20%);
+    border-color: rgb(0 255 65 / 40%);
+  }
+  
+  .scrollbar-thin {
+    scrollbar-width: thin;
+    scrollbar-color: hsl(var(--terminal-green)) transparent;
+  }
+  
+  .scrollbar-thin::-webkit-scrollbar {
+    width: 6px;
+  }
+  
+  .scrollbar-thin::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  
+  .scrollbar-thin::-webkit-scrollbar-thumb {
+    background: hsl(var(--terminal-green));
+    border-radius: 3px;
+  }
+  
+  .scrollbar-thin::-webkit-scrollbar-thumb:hover {
+    background: hsl(var(--terminal-orange));
+  }
+}
