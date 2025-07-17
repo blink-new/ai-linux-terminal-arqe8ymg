@@ -28,7 +28,7 @@ export function Terminal() {
     {
       id: '1',
       type: 'output',
-      content: 'Welcome to AI-Powered Linux Terminal v1.0\nType "help" for available commands or use the AI assistant for suggestions.\n',
+      content: 'Welcome to AI-Powered Linux Terminal v1.0\\nType "help" for available commands or use the AI assistant for suggestions.\\n',
       timestamp: new Date()
     }
   ])
@@ -65,20 +65,14 @@ export function Terminal() {
     }
   }, [lines])
 
-  // Generate AI suggestions based on current input
-  useEffect(() => {
-    if (currentInput.length > 2 && user) {
-      const timeoutId = setTimeout(async () => {
-        await generateAISuggestions(currentInput)
-      }, 500)
-      return () => clearTimeout(timeoutId)
-    } else {
-      setAiSuggestions([])
-    }
-  }, [currentInput, user, generateAISuggestions])
-
   const generateAISuggestions = useCallback(async (input: string) => {
     if (!user) return
+    
+    // First try local command matching for instant feedback
+    const localSuggestions = getLocalCommandSuggestions(input)
+    if (localSuggestions.length > 0) {
+      setAiSuggestions(localSuggestions)
+    }
     
     try {
       setIsAIThinking(true)
@@ -86,41 +80,194 @@ export function Terminal() {
         prompt: `You are a Linux terminal AI assistant. The user is typing: "${input}"
 
 Based on this partial input, suggest 3 relevant Linux commands that they might want to use. Consider:
-- Common typos and partial commands
-- Related commands that accomplish similar tasks
+- Command completion and common variations
+- Related commands that accomplish similar tasks  
 - Commands that work well together
+- File operations, system monitoring, network tools, development commands
+- Package management, text processing, archive operations
 
 Current directory: ${simulator.getCurrentDirectory()}
+Available files: ${Object.keys(simulator.getNode(simulator.getCurrentDirectory())?.children || {}).join(', ')}
 
 Respond with ONLY a JSON array of objects with this format:
 [
   {
-    "command": "complete command with common flags",
+    "command": "complete command with common flags and arguments",
     "description": "brief description of what it does",
     "confidence": 0.9
   }
 ]
 
-Keep descriptions under 50 characters. Order by confidence (0-1).`,
-        maxTokens: 300
+Keep descriptions under 60 characters. Order by confidence (0-1). Include specific file names when relevant.`,
+        maxTokens: 400
       })
 
       try {
         const suggestions = JSON.parse(text) as AISuggestion[]
         setAiSuggestions(suggestions.slice(0, 3))
       } catch {
-        // If JSON parsing fails, create fallback suggestions
-        setAiSuggestions([
-          { command: 'ls -la', description: 'List all files with details', confidence: 0.8 },
-          { command: 'help', description: 'Show available commands', confidence: 0.7 }
-        ])
+        // If JSON parsing fails, use local suggestions or fallback
+        if (localSuggestions.length === 0) {
+          setAiSuggestions([
+            { command: 'ls -la', description: 'List all files with details', confidence: 0.8 },
+            { command: 'help', description: 'Show available commands', confidence: 0.7 }
+          ])
+        }
       }
     } catch (error) {
       console.error('AI suggestion error:', error)
+      // Keep local suggestions on error
     } finally {
       setIsAIThinking(false)
     }
   }, [user, simulator])
+
+  const getLocalCommandSuggestions = (input: string): AISuggestion[] => {
+    const commands = [
+      // File Operations
+      { cmd: 'ls', desc: 'List directory contents', variations: ['ls -la', 'ls -lh', 'ls -lt'] },
+      { cmd: 'cd', desc: 'Change directory', variations: ['cd ..', 'cd ~', 'cd /'] },
+      { cmd: 'pwd', desc: 'Print working directory', variations: ['pwd'] },
+      { cmd: 'cat', desc: 'Display file contents', variations: ['cat file.txt', 'cat *.txt'] },
+      { cmd: 'head', desc: 'Show first lines of file', variations: ['head -n 10', 'head file.txt'] },
+      { cmd: 'tail', desc: 'Show last lines of file', variations: ['tail -f', 'tail -n 20'] },
+      { cmd: 'grep', desc: 'Search text patterns', variations: ['grep -r', 'grep -i', 'grep -n'] },
+      { cmd: 'find', desc: 'Find files and directories', variations: ['find . -name', 'find / -type f'] },
+      { cmd: 'wc', desc: 'Word, line, character count', variations: ['wc -l', 'wc -w', 'wc -c'] },
+      { cmd: 'sort', desc: 'Sort lines in file', variations: ['sort -r', 'sort -n', 'sort -u'] },
+      { cmd: 'uniq', desc: 'Report unique lines', variations: ['uniq -c', 'uniq -d'] },
+      { cmd: 'cut', desc: 'Extract columns from file', variations: ['cut -f1', 'cut -d,'] },
+      { cmd: 'diff', desc: 'Compare files', variations: ['diff -u', 'diff -r'] },
+      { cmd: 'file', desc: 'Determine file type', variations: ['file *', 'file -b'] },
+      { cmd: 'stat', desc: 'Display file statistics', variations: ['stat file.txt'] },
+      { cmd: 'du', desc: 'Disk usage', variations: ['du -h', 'du -s', 'du -sh *'] },
+      { cmd: 'mkdir', desc: 'Create directory', variations: ['mkdir -p', 'mkdir dir1 dir2'] },
+      { cmd: 'touch', desc: 'Create empty file', variations: ['touch file.txt'] },
+      { cmd: 'rm', desc: 'Remove files', variations: ['rm -rf', 'rm -i', 'rm *.tmp'] },
+      { cmd: 'cp', desc: 'Copy files', variations: ['cp -r', 'cp -i', 'cp file1 file2'] },
+      { cmd: 'mv', desc: 'Move/rename files', variations: ['mv file1 file2', 'mv *.txt dir/'] },
+      { cmd: 'ln', desc: 'Create links', variations: ['ln -s', 'ln file link'] },
+      { cmd: 'chmod', desc: 'Change permissions', variations: ['chmod 755', 'chmod +x', 'chmod -R'] },
+      { cmd: 'chown', desc: 'Change ownership', variations: ['chown user:group', 'chown -R'] },
+      
+      // Archive & Compression
+      { cmd: 'tar', desc: 'Archive files', variations: ['tar -czf', 'tar -xzf', 'tar -tzf'] },
+      { cmd: 'gzip', desc: 'Compress files', variations: ['gzip file.txt', 'gzip -d'] },
+      { cmd: 'gunzip', desc: 'Decompress files', variations: ['gunzip file.gz'] },
+      { cmd: 'zip', desc: 'Create zip archive', variations: ['zip -r archive.zip dir/'] },
+      { cmd: 'unzip', desc: 'Extract zip archive', variations: ['unzip archive.zip', 'unzip -l'] },
+      
+      // Process Management
+      { cmd: 'ps', desc: 'Show processes', variations: ['ps aux', 'ps -ef', 'ps -u user'] },
+      { cmd: 'top', desc: 'Display running processes', variations: ['top', 'top -u user'] },
+      { cmd: 'htop', desc: 'Interactive process viewer', variations: ['htop'] },
+      { cmd: 'kill', desc: 'Terminate process', variations: ['kill -9', 'kill -TERM'] },
+      { cmd: 'killall', desc: 'Kill processes by name', variations: ['killall process'] },
+      { cmd: 'jobs', desc: 'Show active jobs', variations: ['jobs'] },
+      { cmd: 'bg', desc: 'Background job', variations: ['bg %1'] },
+      { cmd: 'fg', desc: 'Foreground job', variations: ['fg %1'] },
+      { cmd: 'nohup', desc: 'Run immune to hangups', variations: ['nohup command &'] },
+      
+      // System Information
+      { cmd: 'whoami', desc: 'Current username', variations: ['whoami'] },
+      { cmd: 'id', desc: 'User and group IDs', variations: ['id', 'id -u', 'id -g'] },
+      { cmd: 'uname', desc: 'System information', variations: ['uname -a', 'uname -r'] },
+      { cmd: 'date', desc: 'Current date and time', variations: ['date', 'date +%Y-%m-%d'] },
+      { cmd: 'uptime', desc: 'System uptime', variations: ['uptime'] },
+      { cmd: 'df', desc: 'Disk space usage', variations: ['df -h', 'df -i'] },
+      { cmd: 'free', desc: 'Memory usage', variations: ['free -h', 'free -m'] },
+      { cmd: 'lscpu', desc: 'CPU information', variations: ['lscpu'] },
+      { cmd: 'lsblk', desc: 'Block devices', variations: ['lsblk', 'lsblk -f'] },
+      { cmd: 'lsusb', desc: 'USB devices', variations: ['lsusb', 'lsusb -v'] },
+      { cmd: 'lspci', desc: 'PCI devices', variations: ['lspci', 'lspci -v'] },
+      { cmd: 'mount', desc: 'Mount filesystems', variations: ['mount', 'mount -t ext4'] },
+      { cmd: 'umount', desc: 'Unmount filesystems', variations: ['umount /mnt'] },
+      { cmd: 'lsof', desc: 'List open files', variations: ['lsof -i', 'lsof -p'] },
+      { cmd: 'netstat', desc: 'Network connections', variations: ['netstat -tuln', 'netstat -r'] },
+      { cmd: 'ss', desc: 'Socket statistics', variations: ['ss -tuln', 'ss -s'] },
+      
+      // Network Tools
+      { cmd: 'ping', desc: 'Test connectivity', variations: ['ping -c 4', 'ping google.com'] },
+      { cmd: 'wget', desc: 'Download files', variations: ['wget url', 'wget -O file'] },
+      { cmd: 'curl', desc: 'Transfer data', variations: ['curl url', 'curl -I', 'curl -X POST'] },
+      { cmd: 'ssh', desc: 'Secure shell', variations: ['ssh user@host', 'ssh -p 22'] },
+      { cmd: 'scp', desc: 'Secure copy', variations: ['scp file user@host:', 'scp -r'] },
+      { cmd: 'nslookup', desc: 'DNS lookup', variations: ['nslookup domain'] },
+      { cmd: 'dig', desc: 'DNS lookup tool', variations: ['dig domain', 'dig @8.8.8.8'] },
+      { cmd: 'traceroute', desc: 'Trace network path', variations: ['traceroute google.com'] },
+      
+      // Development Tools
+      { cmd: 'git', desc: 'Version control', variations: ['git status', 'git add .', 'git commit', 'git push'] },
+      { cmd: 'make', desc: 'Build automation', variations: ['make', 'make clean', 'make install'] },
+      { cmd: 'gcc', desc: 'C compiler', variations: ['gcc -o output file.c', 'gcc -Wall'] },
+      { cmd: 'python', desc: 'Python interpreter', variations: ['python script.py', 'python3 -m'] },
+      { cmd: 'node', desc: 'Node.js runtime', variations: ['node script.js', 'node --version'] },
+      { cmd: 'npm', desc: 'Node package manager', variations: ['npm install', 'npm start', 'npm test'] },
+      { cmd: 'docker', desc: 'Containerization', variations: ['docker ps', 'docker run', 'docker build'] },
+      
+      // Package Management
+      { cmd: 'apt', desc: 'Package manager', variations: ['apt update', 'apt install', 'apt search'] },
+      { cmd: 'yum', desc: 'Red Hat package manager', variations: ['yum install', 'yum update'] },
+      { cmd: 'snap', desc: 'Universal packages', variations: ['snap install', 'snap list'] },
+      
+      // Text Editors
+      { cmd: 'vim', desc: 'Vi editor', variations: ['vim file.txt', 'vim +10 file'] },
+      { cmd: 'nano', desc: 'Simple text editor', variations: ['nano file.txt'] },
+      { cmd: 'emacs', desc: 'Emacs editor', variations: ['emacs file.txt'] },
+      
+      // Environment
+      { cmd: 'history', desc: 'Command history', variations: ['history', 'history | grep'] },
+      { cmd: 'env', desc: 'Environment variables', variations: ['env', 'env | grep'] },
+      { cmd: 'export', desc: 'Set environment variable', variations: ['export VAR=value'] },
+      { cmd: 'which', desc: 'Locate command', variations: ['which command'] },
+      { cmd: 'whereis', desc: 'Locate binary/source', variations: ['whereis command'] },
+      { cmd: 'alias', desc: 'Command aliases', variations: ['alias ll="ls -la"'] },
+      
+      // Utilities
+      { cmd: 'echo', desc: 'Display text', variations: ['echo "hello"', 'echo $VAR'] },
+      { cmd: 'sleep', desc: 'Pause execution', variations: ['sleep 5', 'sleep 1m'] },
+      { cmd: 'watch', desc: 'Repeat command', variations: ['watch -n 1', 'watch df -h'] },
+      { cmd: 'cal', desc: 'Calendar', variations: ['cal', 'cal 2024'] },
+      { cmd: 'bc', desc: 'Calculator', variations: ['bc', 'echo "2+2" | bc'] },
+      { cmd: 'seq', desc: 'Sequence of numbers', variations: ['seq 1 10', 'seq 1 2 10'] },
+      { cmd: 'fortune', desc: 'Random quote', variations: ['fortune'] },
+      { cmd: 'cowsay', desc: 'ASCII cow', variations: ['cowsay "hello"'] },
+      { cmd: 'figlet', desc: 'ASCII art text', variations: ['figlet "text"'] },
+      
+      // Help
+      { cmd: 'man', desc: 'Manual pages', variations: ['man command', 'man -k keyword'] },
+      { cmd: 'help', desc: 'Help information', variations: ['help'] },
+      { cmd: 'apropos', desc: 'Search manual descriptions', variations: ['apropos keyword'] },
+      { cmd: 'whatis', desc: 'Brief command description', variations: ['whatis command'] },
+      { cmd: 'clear', desc: 'Clear terminal', variations: ['clear'] }
+    ]
+
+    const matches = commands.filter(c => 
+      c.cmd.startsWith(input.toLowerCase()) || 
+      c.variations.some(v => v.startsWith(input.toLowerCase()))
+    )
+
+    return matches.slice(0, 3).map((match, index) => {
+      const bestVariation = match.variations.find(v => v.startsWith(input.toLowerCase())) || match.variations[0]
+      return {
+        command: bestVariation,
+        description: match.desc,
+        confidence: 0.9 - (index * 0.1)
+      }
+    })
+  }
+
+  // Generate AI suggestions based on current input
+  useEffect(() => {
+    if (currentInput.length > 1 && user) {
+      const timeoutId = setTimeout(() => {
+        generateAISuggestions(currentInput)
+      }, 300) // Faster response
+      return () => clearTimeout(timeoutId)
+    } else {
+      setAiSuggestions([])
+    }
+  }, [currentInput, user, generateAISuggestions])
 
   const handleCommand = async (command: string) => {
     const trimmedCommand = command.trim()
@@ -203,13 +350,30 @@ Keep it concise and practical. Format as plain text, no markdown.`,
         setCurrentInput(aiSuggestions[0].command)
         setAiSuggestions([])
       }
+    } else if (e.key >= '1' && e.key <= '3' && e.ctrlKey && aiSuggestions.length > 0) {
+      // Ctrl + number to select suggestion
+      e.preventDefault()
+      const index = parseInt(e.key) - 1
+      if (index < aiSuggestions.length) {
+        setCurrentInput(aiSuggestions[index].command)
+        setAiSuggestions([])
+      }
     } else if (e.key === 'ArrowUp') {
       e.preventDefault()
       // Get last command from history
       const lastCommand = lines.filter(line => line.type === 'command').pop()
       if (lastCommand) {
         setCurrentInput(lastCommand.content)
+        setAiSuggestions([])
       }
+    } else if (e.key === 'ArrowDown') {
+      e.preventDefault()
+      // Clear input on arrow down
+      setCurrentInput('')
+      setAiSuggestions([])
+    } else if (e.key === 'Escape') {
+      // Clear suggestions on escape
+      setAiSuggestions([])
     }
   }
 
@@ -326,28 +490,52 @@ Keep it concise and practical. Format as plain text, no markdown.`,
 
                 {/* AI Suggestions */}
                 {aiSuggestions.length > 0 && (
-                  <div className="mt-4 space-y-2">
-                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                      <Sparkles className="w-3 h-3" />
-                      AI Suggestions (Tab to accept first)
+                  <div className="mt-3 border-t border-border/50 pt-3">
+                    <div className="flex items-center gap-2 text-xs text-muted-foreground mb-3">
+                      <Sparkles className="w-3 h-3 text-primary" />
+                      Command Suggestions (Press Tab to use first, or click any)
                     </div>
-                    {aiSuggestions.map((suggestion, index) => (
-                      <div
-                        key={index}
-                        className="command-suggestion cursor-pointer"
-                        onClick={() => applySuggestion(suggestion)}
-                      >
-                        <div className="flex items-center justify-between">
-                          <code className="text-sm text-green-400">{suggestion.command}</code>
-                          <Badge variant="secondary" className="text-xs">
-                            {Math.round(suggestion.confidence * 100)}%
-                          </Badge>
+                    <div className="space-y-2">
+                      {aiSuggestions.map((suggestion, index) => (
+                        <div
+                          key={index}
+                          className="group relative bg-muted/30 hover:bg-muted/60 border border-border/50 hover:border-primary/50 rounded-lg p-3 cursor-pointer transition-all duration-200 hover:shadow-sm"
+                          onClick={() => applySuggestion(suggestion)}
+                        >
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2 mb-1">
+                                <kbd className="px-2 py-1 text-xs font-mono bg-background border border-border rounded text-primary font-medium">
+                                  {index === 0 ? 'Tab' : `Ctrl+${index + 1}`}
+                                </kbd>
+                                <code className="text-sm font-mono text-green-400 font-medium break-all">
+                                  {suggestion.command}
+                                </code>
+                              </div>
+                              <p className="text-xs text-muted-foreground leading-relaxed">
+                                {suggestion.description}
+                              </p>
+                            </div>
+                            <div className="flex items-center gap-2 flex-shrink-0">
+                              <Badge variant="secondary" className="text-xs">
+                                {Math.round(suggestion.confidence * 100)}%
+                              </Badge>
+                              <div className="w-2 h-2 rounded-full bg-green-500 opacity-60 group-hover:opacity-100 transition-opacity" />
+                            </div>
+                          </div>
+                          
+                          {/* Preview indicator */}
+                          <div className="absolute inset-0 rounded-lg border-2 border-primary/20 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
                         </div>
-                        <p className="text-xs text-muted-foreground mt-1">
-                          {suggestion.description}
-                        </p>
-                      </div>
-                    ))}
+                      ))}
+                    </div>
+                    
+                    <div className="mt-3 pt-2 border-t border-border/30">
+                      <p className="text-xs text-muted-foreground/80 flex items-center gap-1">
+                        <span className="inline-block w-1 h-1 bg-primary rounded-full"></span>
+                        Press Tab, Ctrl+1/2/3, or click to use • Type more for better suggestions
+                      </p>
+                    </div>
                   </div>
                 )}
 
@@ -458,8 +646,10 @@ Keep it concise and practical. Format as plain text, no markdown.`,
                         
                         <div className="pt-2 border-t border-border">
                           <div className="text-xs text-muted-foreground">
-                            💡 Use <kbd>Tab</kbd> to accept AI suggestions<br/>
+                            💡 Use <kbd>Tab</kbd> to accept first suggestion<br/>
+                            💡 Use <kbd>Ctrl+1/2/3</kbd> to select specific suggestions<br/>
                             💡 Use <kbd>↑</kbd> to recall last command<br/>
+                            💡 Use <kbd>Esc</kbd> to clear suggestions<br/>
                             💡 Type <code>help</code> for full command list
                           </div>
                         </div>
