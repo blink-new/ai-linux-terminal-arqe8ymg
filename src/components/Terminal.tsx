@@ -28,7 +28,32 @@ export function Terminal() {
     {
       id: '1',
       type: 'output',
-      content: 'Welcome to AI-Powered Linux Terminal v1.0\\nType "help" for available commands or use the AI assistant for suggestions.\\n',
+      content: `🚀 Welcome to AI-Powered Linux Terminal v1.0
+
+This is a fully functional Linux terminal simulator with integrated AI assistance.
+
+✨ Features:
+• Real-time command suggestions powered by AI
+• Complete Linux command simulation
+• Interactive file system
+• Command history with arrow key navigation
+• AI chat assistant for help and explanations
+
+🎯 Quick Start:
+• Type "help" to see all available commands
+• Try "neofetch" for system information
+• Use "tree" to explore the file system
+• Type "matrix" or "sl" for some fun!
+• Ask the AI assistant anything about Linux
+
+💡 Pro Tips:
+• Press Tab to accept the first AI suggestion
+• Use Ctrl+1/2/3 to select specific suggestions
+• Use ↑/↓ arrows to navigate command history
+• Click anywhere in the terminal to focus input
+
+Type a command to get started!
+`,
       timestamp: new Date()
     }
   ])
@@ -38,6 +63,9 @@ export function Terminal() {
   const [showAIPanel, setShowAIPanel] = useState(true)
   const [aiChatHistory, setAiChatHistory] = useState<Array<{role: 'user' | 'assistant', content: string}>>([])
   const [aiInput, setAiInput] = useState('')
+  const [commandHistory, setCommandHistory] = useState<string[]>([])
+  const [historyIndex, setHistoryIndex] = useState(-1)
+  const [isTyping, setIsTyping] = useState(false)
   
   const inputRef = useRef<HTMLInputElement>(null)
   const terminalRef = useRef<HTMLDivElement>(null)
@@ -47,16 +75,32 @@ export function Terminal() {
   useEffect(() => {
     const unsubscribe = blink.auth.onAuthStateChanged((state) => {
       setUser(state.user)
+      if (state.user) {
+        // Add welcome message when user logs in
+        setLines(prev => [...prev, {
+          id: Date.now().toString(),
+          type: 'output',
+          content: `Welcome back, ${state.user.email}! 🚀\nAI-Powered Linux Terminal v1.0 is ready.\nType "help" for available commands or use the AI assistant for suggestions.\n`,
+          timestamp: new Date()
+        }])
+      }
     })
     return unsubscribe
   }, [])
 
-  // Auto-focus input
+  // Auto-focus input and handle click-to-focus
   useEffect(() => {
     if (inputRef.current) {
       inputRef.current.focus()
     }
   }, [])
+
+  // Click anywhere in terminal to focus input
+  const handleTerminalClick = () => {
+    if (inputRef.current) {
+      inputRef.current.focus()
+    }
+  }
 
   // Auto-scroll to bottom
   useEffect(() => {
@@ -233,6 +277,10 @@ Keep descriptions under 60 characters. Order by confidence (0-1). Include specif
       { cmd: 'fortune', desc: 'Random quote', variations: ['fortune'] },
       { cmd: 'cowsay', desc: 'ASCII cow', variations: ['cowsay "hello"'] },
       { cmd: 'figlet', desc: 'ASCII art text', variations: ['figlet "text"'] },
+      { cmd: 'neofetch', desc: 'System info with ASCII art', variations: ['neofetch'] },
+      { cmd: 'matrix', desc: 'Enter the matrix', variations: ['matrix'] },
+      { cmd: 'sl', desc: 'Steam locomotive', variations: ['sl'] },
+      { cmd: 'tree', desc: 'Display directory tree', variations: ['tree', 'tree /home'] },
       
       // Help
       { cmd: 'man', desc: 'Manual pages', variations: ['man command', 'man -k keyword'] },
@@ -262,16 +310,36 @@ Keep descriptions under 60 characters. Order by confidence (0-1). Include specif
     if (currentInput.length > 1 && user) {
       const timeoutId = setTimeout(() => {
         generateAISuggestions(currentInput)
+        setIsTyping(false)
       }, 300) // Faster response
       return () => clearTimeout(timeoutId)
     } else {
       setAiSuggestions([])
+      setIsTyping(false)
     }
   }, [currentInput, user, generateAISuggestions])
+
+  // Stop typing indicator after a delay
+  useEffect(() => {
+    if (isTyping) {
+      const timeoutId = setTimeout(() => {
+        setIsTyping(false)
+      }, 1000)
+      return () => clearTimeout(timeoutId)
+    }
+  }, [isTyping])
 
   const handleCommand = async (command: string) => {
     const trimmedCommand = command.trim()
     if (!trimmedCommand) return
+
+    // Add to command history
+    setCommandHistory(prev => {
+      const newHistory = [...prev, trimmedCommand]
+      // Keep only last 100 commands
+      return newHistory.slice(-100)
+    })
+    setHistoryIndex(-1)
 
     const prompt = simulator.getPrompt()
     
@@ -360,20 +428,35 @@ Keep it concise and practical. Format as plain text, no markdown.`,
       }
     } else if (e.key === 'ArrowUp') {
       e.preventDefault()
-      // Get last command from history
-      const lastCommand = lines.filter(line => line.type === 'command').pop()
-      if (lastCommand) {
-        setCurrentInput(lastCommand.content)
+      // Navigate command history backwards
+      if (commandHistory.length > 0) {
+        const newIndex = historyIndex === -1 ? commandHistory.length - 1 : Math.max(0, historyIndex - 1)
+        setHistoryIndex(newIndex)
+        setCurrentInput(commandHistory[newIndex])
         setAiSuggestions([])
       }
     } else if (e.key === 'ArrowDown') {
       e.preventDefault()
-      // Clear input on arrow down
-      setCurrentInput('')
-      setAiSuggestions([])
+      // Navigate command history forwards
+      if (historyIndex >= 0) {
+        const newIndex = historyIndex + 1
+        if (newIndex >= commandHistory.length) {
+          setHistoryIndex(-1)
+          setCurrentInput('')
+        } else {
+          setHistoryIndex(newIndex)
+          setCurrentInput(commandHistory[newIndex])
+        }
+        setAiSuggestions([])
+      }
     } else if (e.key === 'Escape') {
       // Clear suggestions on escape
       setAiSuggestions([])
+      setHistoryIndex(-1)
+    } else if (e.key === 'l' && e.ctrlKey) {
+      // Ctrl+L to clear terminal
+      e.preventDefault()
+      setLines([])
     }
   }
 
@@ -444,6 +527,19 @@ Keep it concise and practical. Format as plain text, no markdown.`,
                   <Badge variant="outline" className="text-xs">
                     {simulator.getCurrentDirectory()}
                   </Badge>
+                  {isTyping && (
+                    <Badge variant="secondary" className="text-xs animate-pulse">
+                      typing...
+                    </Badge>
+                  )}
+                  {isAIThinking && (
+                    <Badge variant="secondary" className="text-xs animate-pulse">
+                      AI thinking...
+                    </Badge>
+                  )}
+                  <Badge variant="outline" className="text-xs">
+                    {commandHistory.length} cmds
+                  </Badge>
                   <Button
                     variant="ghost"
                     size="sm"
@@ -454,7 +550,7 @@ Keep it concise and practical. Format as plain text, no markdown.`,
                 </div>
               </div>
               
-              <div className="terminal-content">
+              <div className="terminal-content" onClick={handleTerminalClick}>
                 <ScrollArea className="h-[500px] scrollbar-thin" ref={terminalRef}>
                   {lines.map((line) => (
                     <div key={line.id} className="terminal-line">
@@ -478,7 +574,11 @@ Keep it concise and practical. Format as plain text, no markdown.`,
                       ref={inputRef}
                       type="text"
                       value={currentInput}
-                      onChange={(e) => setCurrentInput(e.target.value)}
+                      onChange={(e) => {
+                        setCurrentInput(e.target.value)
+                        setIsTyping(true)
+                        setHistoryIndex(-1) // Reset history navigation when typing
+                      }}
                       onKeyDown={handleKeyPress}
                       className="terminal-input"
                       autoComplete="off"
@@ -530,7 +630,7 @@ Keep it concise and practical. Format as plain text, no markdown.`,
                       ))}
                     </div>
                     
-                    <div className="mt-3 pt-2 border-t border-border/30">
+                    <div className="mt-3 pt-2 border-t border-border">
                       <p className="text-xs text-muted-foreground/80 flex items-center gap-1">
                         <span className="inline-block w-1 h-1 bg-primary rounded-full"></span>
                         Press Tab, Ctrl+1/2/3, or click to use • Type more for better suggestions
@@ -648,7 +748,8 @@ Keep it concise and practical. Format as plain text, no markdown.`,
                           <div className="text-xs text-muted-foreground">
                             💡 Use <kbd>Tab</kbd> to accept first suggestion<br/>
                             💡 Use <kbd>Ctrl+1/2/3</kbd> to select specific suggestions<br/>
-                            💡 Use <kbd>↑</kbd> to recall last command<br/>
+                            💡 Use <kbd>↑/↓</kbd> to navigate command history<br/>
+                            💡 Use <kbd>Ctrl+L</kbd> to clear terminal<br/>
                             💡 Use <kbd>Esc</kbd> to clear suggestions<br/>
                             💡 Type <code>help</code> for full command list
                           </div>

@@ -537,6 +537,14 @@ export class LinuxSimulator {
         return this.figlet(args)
       case 'banner':
         return this.banner(args)
+      case 'neofetch':
+        return this.neofetch()
+      case 'matrix':
+        return this.matrix()
+      case 'sl':
+        return this.sl()
+      case 'tree':
+        return this.tree(args)
       case '':
         return ''
       default:
@@ -1285,7 +1293,7 @@ DESCRIPTION
   }
 
   private diff(args: string[]): string {
-    if (args.length < 2) return 'diff: missing operand after \\'diff\\''
+    if (args.length < 2) return 'diff: missing operand after "diff"'
     
     const file1 = args[0]
     const file2 = args[1]
@@ -1727,7 +1735,7 @@ ssh.service              loaded active running OpenBSD Secure Shell server`
   }
 
   private curl(args: string[]): string {
-    if (args.length === 0) return 'curl: try \\'curl --help\\' for more information'
+    if (args.length === 0) return 'curl: try "curl --help" for more information'
     const url = args[args.length - 1]
     return `curl: simulated - would fetch ${url}`
   }
@@ -2176,7 +2184,7 @@ Su Mo Tu We Th Fr Sa
   private fortune(): string {
     const fortunes = [
       'The best way to predict the future is to invent it.',
-      'Life is what happens to you while you\\'re busy making other plans.',
+      'Life is what happens to you while you are busy making other plans.',
       'The only way to do great work is to love what you do.',
       'Innovation distinguishes between a leader and a follower.',
       'Stay hungry, stay foolish.',
@@ -2196,7 +2204,7 @@ Su Mo Tu We Th Fr Sa
  ${border}
         \\   ^__^
          \\  (oo)\\_______
-            (__)\\       )\\/\\
+            (__)\\       )\\/"
                 ||----w |
                 ||     ||`
   }
@@ -2221,6 +2229,99 @@ Su Mo Tu We Th Fr Sa
     const text = args.join(' ') || 'BANNER'
     return `banner: simulated - would create large banner text for "${text}"`
   }
+
+  private matrix(): string {
+    const chars = '01アイウエオカキクケコサシスセソタチツテトナニヌネノハヒフヘホマミムメモヤユヨラリルレロワヲン'
+    let result = ''
+    for (let i = 0; i < 20; i++) {
+      let line = ''
+      for (let j = 0; j < 80; j++) {
+        if (Math.random() > 0.7) {
+          line += chars[Math.floor(Math.random() * chars.length)]
+        } else {
+          line += ' '
+        }
+      }
+      result += line + '\\n'
+    }
+    return result + '\\nWelcome to the Matrix... Follow the white rabbit.'
+  }
+
+  private sl(): string {
+    return `                      (  ) (@@) ( )  (@)  ()    @@    O     @     O     @      O
+                 (@@@)
+             (    )
+          (@@@@)
+       (   )
+
+    ====        ________                ___________
+_D _|  |_______/        \\__I_I_____===__|_________|
+ |(_)---  |   H\\________/ |   |        =|___ ___|      _________________
+ /     |  |   H  |  |     |   |         ||_| |_||     _|                \\_____A
+|      |  |   H  |__--------------------| [___] |   =|                        |
+| ________|___H__/__|_____/[][]~\\_______|       |   -|                        |
+|/ |   |-----------I_____I [][] []  D   |=======|____|________________________|_
+__/ =| o |=-~~\\  /~~\\  /~~\\  /~~\\ ____Y___________|__|__________________________|_
+ |/-=|___|=    ||    ||    ||    |_____/~\\___/          |_D__D__D_|  |_D__D__D_|
+  \\_/      \\O=====O=====O=====O_/      \\_/               \\_/   \\_/    \\_/   \\_/
+
+Choo choo! 🚂 You've been visited by the SL train!`
+  }
+
+  private tree(args: string[]): string {
+    const path = args[0] || this.currentDirectory
+    const node = this.getNode(this.normalizePath(path))
+    
+    if (!node) {
+      return `tree: ${path}: No such file or directory`
+    }
+    
+    if (node.type === 'file') {
+      return node.name
+    }
+    
+    let result = path + '\\n'
+    
+    const buildTree = (currentNode: FileSystemNode, prefix: string = '', isLast: boolean = true) => {
+      if (!currentNode.children) return
+      
+      const entries = Object.values(currentNode.children)
+      entries.forEach((entry, index) => {
+        const isLastEntry = index === entries.length - 1
+        const connector = isLastEntry ? '└── ' : '├── '
+        result += prefix + connector + entry.name + '\\n'
+        
+        if (entry.type === 'directory' && entry.children) {
+          const newPrefix = prefix + (isLastEntry ? '    ' : '│   ')
+          buildTree(entry, newPrefix, isLastEntry)
+        }
+      })
+    }
+    
+    buildTree(node)
+    return result.trim()
+  }
+
+  private neofetch(): string {
+    return `                   -\`                    user@ai-terminal 
+                  .o+\`                   ----------------- 
+                 \`ooo/                   OS: AI Linux x86_64 
+                \`+oooo:                  Host: Blink Terminal v1.0 
+               \`+oooooo:                 Kernel: 5.15.0-ai 
+               -+oooooo+:                Uptime: 2 hours, 30 mins 
+             \`/:-:++oooo+:               Packages: 1337 (apt) 
+            \`/++++/+++++++:              Shell: bash 5.1.16 
+           \`/++++++++++++++:             Resolution: 1920x1080 
+          \`/+++ooooooooooooo/\`           DE: AI Desktop Environment 
+         ./ooosssso++osssssso+\`          WM: AI Window Manager 
+        .oossssso-\`\`\`\`/ossssss+\`         WM Theme: Matrix Green 
+       -osssssso.      :ssssssso.        Theme: AI Dark [GTK3] 
+      :osssssss/        osssso+++.       Icons: AI Icons [GTK3] 
+     /ossssssss/        +ssssooo/-       Terminal: AI Terminal 
+   \`/ossssso+/:-        -:/+osssso+-     CPU: Intel i7-AI (8) @ 3.4GHz 
+  \`+sso+:-\`                 \`.-/+oso:    GPU: NVIDIA AI Graphics 
+ \`++:.                           \`-/+/   Memory: 3276MiB / 8192MiB 
+ .\`                                 \`/`
 
   private help(): string {
     return `AI-Powered Linux Terminal - Available Commands:
@@ -2320,6 +2421,12 @@ Utilities:
   fortune            - random quote
   cowsay <text>      - ASCII cow
   figlet <text>      - ASCII art text
+
+Fun Commands:
+  neofetch           - system information with ASCII art
+  matrix             - enter the matrix
+  sl                 - steam locomotive
+  tree [path]        - display directory tree
 
 Help:
   man <command>      - manual pages

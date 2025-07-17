@@ -153,11 +153,24 @@
     width: 8px;
     height: 20px;
     display: inline-block;
+    margin-left: 2px;
   }
   
   @keyframes blink {
     0%, 50% { opacity: 100%; }
     51%, 100% { opacity: 0%; }
+  }
+  
+  .terminal-line:hover {
+    background: rgb(0 255 65 / 2%);
+  }
+  
+  .terminal-input:focus {
+    outline: none;
+  }
+  
+  .terminal-content {
+    cursor: text;
   }
   
   .ai-panel {
